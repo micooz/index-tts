@@ -287,13 +287,16 @@ class TextNormalizer:
 
         # 按术语长度降序排列，避免短术语先匹配导致长术语无法匹配
         # 例如："PCIe 5.0" 应该在 "PCIe" 之前匹配
-        sorted_terms = sorted(self.term_glossary.keys(), key=len, reverse=True)
+        sorted_terms = sorted([str(k) for k in self.term_glossary.keys()], key=len, reverse=True)
         @lru_cache(maxsize=42)
         def get_term_pattern(term: str):
             return re.compile(re.escape(term), re.IGNORECASE)
         transformed_text = text
         for term in sorted_terms:
-            term_value = self.term_glossary[term]
+            # 兼容 YAML 加载后 key 可能是 int 的情况
+            term_value = self.term_glossary.get(term) or self.term_glossary.get(int(term) if term.isdigit() else None)
+            if term_value is None:
+                continue
             if isinstance(term_value, dict):
                 replacement = term_value.get(lang, term_value.get(lang, term))
             else:
